@@ -1,3 +1,7 @@
+## 11.0.2+dlct.1 (DayLight Creative Technologies fork)
+### Android
+- Register the method channel at **engine lifetime** (`onAttachedToEngine`) instead of activity lifetime. Previously the channel was created in `setup()` (`onAttachedToActivity`) and destroyed in `tearDown()` (`onDetachedFromActivity`), binding the handler to the Activity. Any activity detach/re-attach — configuration change, low-memory activity recreation, or the host activity being destroyed while the system picker is foreground — left the channel without a handler, so a method call arriving in that window threw `MissingPluginException(No implementation found for method <type> on channel miguelruivo.flutter.plugins.filepicker)` (observed for method `media`). The handler now survives activity transitions; `onMethodCall` already returns `error("no_activity")` when no activity is attached, so calls during a detach window degrade cleanly instead of throwing.
+
 ## 11.0.2
 ### Android
 - Fixed a Path Traversal vulnerability (CWE-22) when resolving file paths from external content providers. [#1967](https://github.com/miguelpruivo/flutter_file_picker/issues/1967)

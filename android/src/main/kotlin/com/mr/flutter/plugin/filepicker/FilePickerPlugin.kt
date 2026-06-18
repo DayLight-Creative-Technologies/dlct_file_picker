@@ -184,8 +184,9 @@ class FilePickerPlugin : MethodCallHandler, FlutterPlugin,
         this.activity = activity
         this.application = application
         this.delegate = FilePickerDelegate(activity)
-        this.channel = MethodChannel(messenger, CHANNEL)
-        channel?.setMethodCallHandler(this)
+        // The method channel is registered at engine lifetime (onAttachedToEngine),
+        // NOT here. Only activity-scoped wiring lives in setup(): the delegate, the
+        // event channel, the activity-result listener, and the lifecycle observer.
         delegate?.let { it ->
             EventChannel(messenger, EVENT_CHANNEL).setStreamHandler(object :
                 EventChannel.StreamHandler {
@@ -218,17 +219,33 @@ class FilePickerPlugin : MethodCallHandler, FlutterPlugin,
         this.lifecycle = null
         delegate?.setEventHandler(null)
         this.delegate = null
-        channel?.setMethodCallHandler(null)
-        this.channel = null
+        // The method channel is owned by the engine lifecycle (onDetachedFromEngine);
+        // it deliberately survives activity detach so the handler is still present
+        // when the activity re-attaches (config change, low memory, picker activity
+        // churn). onMethodCall returns error("no_activity") while detached.
         this.application = null
     }
 
     override fun onAttachedToEngine(binding: FlutterPluginBinding) {
         this.pluginBinding = binding
+        // Register the method channel at ENGINE lifetime. Previously it was created
+        // in setup() (onAttachedToActivity) and torn down in tearDown()
+        // (onDetachedFromActivity), binding the handler's lifetime to the Activity.
+        // Any activity detach/re-attach — configuration change, low-memory activity
+        // recreation, the host activity being destroyed while the system picker is
+        // foreground — left the channel with no handler, so a call arriving in that
+        // window threw MissingPluginException (e.g. "No implementation found for
+        // method media"). The engine outlives those transitions, so the handler is
+        // always present; onMethodCall already returns error("no_activity") when no
+        // activity is attached, so a call during a detach window degrades cleanly.
+        this.channel = MethodChannel(binding.binaryMessenger, CHANNEL)
+        channel?.setMethodCallHandler(this)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPluginBinding) {
         this.pluginBinding = null
+        channel?.setMethodCallHandler(null)
+        this.channel = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
