@@ -1,3 +1,21 @@
+## 11.0.2+dlct.3 (DayLight Creative Technologies fork)
+
+### Migrated to Flutter's built-in Kotlin support
+
+- Removed the ad hoc `isAgp9OrAbove` conditional (which skipped applying
+  `org.jetbrains.kotlin.android` and `kotlinOptions` on AGP 9+ but never
+  added a replacement, leaving the module without an explicit `jvmTarget`
+  under AGP 9) and replaced it with the unconditional migration from
+  Flutter's official plugin-author guide
+  (https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors):
+  the Kotlin plugin application and `kotlinOptions` block are gone entirely,
+  replaced by a top-level `kotlin { compilerOptions { jvmTarget } }` block
+  that applies regardless of AGP version. Flutter warns that a future
+  release will refuse to build apps whose plugins apply the Kotlin Gradle
+  Plugin directly; this closes that warning for consuming apps on AGP 9
+  with `android.builtInKotlin=false`. Forward migration, not a workaround —
+  no retire condition.
+
 ## 11.0.2+dlct.2 (DayLight Creative Technologies fork)
 
 ### Windows support removed — SSK is iOS + Android only
