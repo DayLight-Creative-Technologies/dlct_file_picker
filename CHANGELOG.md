@@ -1,3 +1,30 @@
+## 11.0.2+dlct.2 (DayLight Creative Technologies fork)
+
+### Windows support removed — SSK is iOS + Android only
+
+- Deleted `lib/src/platform/windows/` and its export, and dropped the `windows:`
+  entry from `flutter.plugin.platforms`.
+- Dropped the `win32` and `ffi` dependencies. Both were used **exclusively** by the
+  Windows implementation (verified: the only reference to either outside
+  `lib/src/platform/windows/` was a comment in `lib/file_picker.dart`).
+
+**Why.** The fork's `win32: ^5.9.0` cap was the sole constraint blocking
+`package_info_plus 10`, `share_plus 13` and `device_info_plus 13` in
+SocialScoreKeeper — all three require `win32 ^6.0.1`, all three are
+environment-only bumps with zero Dart call-site changes.
+
+Simply widening the cap does **not** work: win32 6 reworked the COM surface
+(`HRESULT` became a type, `TEXT`/`convertToIID`/`COMObject` were removed, `SIGDN`
+changed), and `dart analyze` reports 35 errors in `file_picker_windows.dart`
+against win32 6.4.0. Porting that COM code would mean maintaining — and being
+unable to test — a Windows file picker for an app that ships only to iOS and
+Android.
+
+Deleting the platform we do not target removes the dependency outright instead of
+carrying a port we can never exercise. This fork is now explicitly **mobile-only**
+(Android + iOS + the macOS/Linux/web implementations inherited from upstream,
+which carry no blocking constraints).
+
 ## 11.0.2+dlct.1 (DayLight Creative Technologies fork)
 ### Android
 - Register the method channel at **engine lifetime** (`onAttachedToEngine`) instead of activity lifetime. Previously the channel was created in `setup()` (`onAttachedToActivity`) and destroyed in `tearDown()` (`onDetachedFromActivity`), binding the handler to the Activity. Any activity detach/re-attach — configuration change, low-memory activity recreation, or the host activity being destroyed while the system picker is foreground — left the channel without a handler, so a method call arriving in that window threw `MissingPluginException(No implementation found for method <type> on channel miguelruivo.flutter.plugins.filepicker)` (observed for method `media`). The handler now survives activity transitions; `onMethodCall` already returns `error("no_activity")` when no activity is attached, so calls during a detach window degrade cleanly instead of throwing.
